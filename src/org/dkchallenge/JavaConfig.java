@@ -20,11 +20,9 @@ public class JavaConfig {
 
 	@Bean
 	public SwingDataProcessor swingDataProcessor() {
-		
-		String filename = "latestSwing.csv";
-		// constructor injection 
-		//return new SwingDataProcessor(time(), ax(), ay(), az(), wx(), wy(), wz(), indices(), filename);
-		
+		String filename = "C:/Users/Nick/eclipse-workspace/DKChallengeSpringFr/latestSwing.csv";
+		return new SwingDataProcessor(time(), ax(), ay(), az(), wx(), wy(), wz(), indices(), filename);
+		/*
 		List<Double> time = new ArrayList<Double>();
 		List<Double> ax = new ArrayList<Double>();
 		List<Double> ay = new ArrayList<Double>();
@@ -44,10 +42,10 @@ public class JavaConfig {
 		sdp.setTime(time);
 		sdp.setIndices(ind);
 		return sdp;
+		*/
 		
 		
 	}
-	/* For constructor injection instead of setter injection
 	@Bean
 	public List<Double> ax(){
 		return new ArrayList<Double>();
@@ -76,9 +74,10 @@ public class JavaConfig {
 	public List<Double> time(){
 		return new ArrayList<Double>();
 	}
+	
 	@Bean
 	public List<IndexPair> indices(){
 		return new ArrayList<IndexPair>();
 	}
-	*/
+	
 }

@@ -14,6 +14,9 @@ import java.util.List;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 
 
 
@@ -25,7 +28,7 @@ public class SwingDataProcessor {
 	private List<Double> wx;
 	private List<Double> wy;
 	private List<Double> wz;
-	private List<IndexPair> indices; //stores index of first and last elements that meet threshold requirements for multi-continuity function
+	//private List<IndexPair> indices; //stores index of first and last elements that meet threshold requirements for multi-continuity function
 	String filename;
 
 	public SwingDataProcessor() {
@@ -40,8 +43,25 @@ public class SwingDataProcessor {
 		this.wx = wx;
 		this.wy = wy;
 		this.wz = wz;
-		this.indices = indices;
+		//this.indices = indices;
 		this.filename = filename;
+		try (
+	            Reader br = Files.newBufferedReader(Paths.get(filename));
+	            CSVParser parser = new CSVParser(br, CSVFormat.DEFAULT);
+	        ) {
+	            for (CSVRecord record : parser) {
+	            	time.add(Double.parseDouble(record.get(0)));
+	            	ax.add(Double.parseDouble(record.get(1)));
+					ay.add(Double.parseDouble(record.get(2)));
+					az.add(Double.parseDouble(record.get(3)));
+					wx.add(Double.parseDouble(record.get(4)));
+					wy.add(Double.parseDouble(record.get(5)));
+					wz.add(Double.parseDouble(record.get(6)));
+	        }
+		}
+		catch(IOException ioe) {
+			ioe.printStackTrace();
+		}
 	}
 
 	public List<Double> getTime() {
@@ -107,7 +127,7 @@ public class SwingDataProcessor {
 	public void setFilename(String filename) {
 		this.filename = filename;
 	}
-	
+	/*
 	public List<IndexPair> getIndices() {
 		return indices;
 	}
@@ -115,30 +135,7 @@ public class SwingDataProcessor {
 	public void setIndices(List<IndexPair> indices) {
 		this.indices = indices;
 	}
-	
-	/**
-	* Uses given file to create arrays for each column
 	*/
-	public void readSwingData(){
-		try (
-	            Reader br = Files.newBufferedReader(Paths.get(filename));
-	            CSVParser parser = new CSVParser(br, CSVFormat.DEFAULT);
-	        ) {
-	            for (CSVRecord record : parser) {
-	            	time.add(Double.parseDouble(record.get(0)));
-	            	ax.add(Double.parseDouble(record.get(1)));
-					ay.add(Double.parseDouble(record.get(2)));
-					az.add(Double.parseDouble(record.get(3)));
-					wx.add(Double.parseDouble(record.get(4)));
-					wy.add(Double.parseDouble(record.get(5)));
-					wz.add(Double.parseDouble(record.get(6)));
-	        }
-		}
-		catch(IOException ioe) {
-			ioe.printStackTrace();
-		}
-	            
-	}
 	/**
 	* Returns first index where data has values that meet threshold for at least winLength samples in a row
 	*
@@ -150,24 +147,7 @@ public class SwingDataProcessor {
 	* @return firstIndex 	first index of series of entries that meet threshold
 	*/
 	public int searchContinuityAboveValue(List<Double> data, int indexBegin, int indexEnd, double threshold,int winLength) {
-		int numSamples = 0; //number of data entries that have met threshold in a row
-		int firstIndex = -1;
-		for (int i = indexBegin; (i <= indexEnd); i++) {
-			if(data.get(i) > threshold) {
-				if (numSamples == 0) {
-					firstIndex = i;
-				}
-				numSamples++;
-				if(numSamples >= winLength) {
-					return firstIndex;
-				}
-			}
-			else {
-			numSamples = 0;
-			firstIndex = -1;
-			}
-		}
-		return firstIndex;
+		return helper(data, data, data, indexBegin, indexEnd, threshold, threshold, Double.POSITIVE_INFINITY, winLength, false);
 	}
 	/**
 	* Returns first index where data has values that meet threshold for at least winLength samples in a row, starting from higher index and searching down
@@ -181,24 +161,8 @@ public class SwingDataProcessor {
 	* @return firstIndex 	first index of series of entries that meet threshold
 	*/
 	public int backSearchContinuityWithinRange(List<Double> data, int indexBegin, int indexEnd, double thresholdLo, double thresholdHi,int winLength) {
-		int numSamples = 0; //number of data entries that have met threshold in a row
-		int firstIndex = -1; 
-		for (int i = indexBegin; i >= indexEnd; i--) {
-			if((data.get(i) > thresholdLo) && (data.get(i) < thresholdHi)) {
-				if (numSamples == 0) {
-					firstIndex = indexBegin;
-				}
-				numSamples++;
-				if(numSamples == winLength) {
-					return firstIndex;
-				}
-			}
-			else {
-			numSamples = 0;
-			firstIndex = -1;
-			}
-		}
-		return firstIndex;
+		return helper(data, data, data, indexEnd, indexBegin, thresholdLo, thresholdLo, thresholdHi,winLength, true);
+		
 	}
 	
 	
@@ -215,24 +179,8 @@ public class SwingDataProcessor {
 	* @return firstIndex 	first index of series of entries that meet threshold
 	*/
 	public int searchContinuityAboveValueTwoSignals(List<Double> data1, List<Double> data2, int indexBegin, int indexEnd, double threshold1, double threshold2,int winLength) {
-		int numSamples = 0; //number of data entries that have met threshold in a row
-		int firstIndex = -1;
-		for (int i = indexBegin; (i <= indexEnd); i++) {
-			if((data1.get(i) > threshold1) && (data2.get(i) > threshold2)) {
-				if (numSamples == 0) {
-					firstIndex = i;
-				}
-				numSamples++;
-				if(numSamples == winLength) {
-					return firstIndex;
-				}
-			}
-			else {
-			numSamples = 0;
-			firstIndex = -1;
-			}
-		}
-		return firstIndex;
+		return helper(data1, data2, data1, indexBegin, indexEnd, threshold1, threshold2, Double.POSITIVE_INFINITY,winLength, false);
+		
 	}
 	/**
 	* Returns all sets of entries that meet threshold
@@ -250,6 +198,7 @@ public class SwingDataProcessor {
 		int firstIndex = -1;
 		int lastIndex = -1; //index marking end of series that meet threshold
 		boolean reachedLength = false; //true if encountered 'winlength' number of entries meeting threshold in a row
+		List<IndexPair> indices = new ArrayList<IndexPair>();
 		for (int i = indexBegin; (i <= indexEnd); i++) {
 			if((data.get(i) > thresholdLo) && (data.get(i) < thresholdHi)) {
 				if (numSamples == 0) {
@@ -276,5 +225,33 @@ public class SwingDataProcessor {
 			indices.add(new IndexPair(firstIndex, lastIndex));
 		}
 		return indices;
+	}
+	public int helper(List<Double> data1, List<Double> data2, List<Double> data3, int indexBegin, int indexEnd, double thresholdLo1, double thresholdLo2, double thresholdHi,int winLength, boolean backSearch) {
+		int numSamples = 0; //number of data entries that have met threshold in a row
+		int firstIndex = -1;
+		int m;
+		if (backSearch) {
+			m = indexEnd;
+		}
+		else { 
+			m = 0;
+			}
+		for (int i = indexBegin; (i <= indexEnd); i++) {
+			int k = Math.abs(m-i);
+			if((data1.get(k) > thresholdLo1) && (data2.get(k) > thresholdLo2) && (data3.get(k) < thresholdHi)) {
+				if (numSamples == 0) {
+					firstIndex = k;
+				}
+				numSamples++;
+				if(numSamples >= winLength) {
+					return firstIndex;
+				}
+			}
+			else {
+			numSamples = 0;
+			firstIndex = -1;
+			}
+		}
+		return -1;
 	}
 }

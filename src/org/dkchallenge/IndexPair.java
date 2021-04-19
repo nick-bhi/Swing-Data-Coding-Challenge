@@ -1,5 +1,7 @@
 package org.dkchallenge;
 
+import org.springframework.stereotype.Component;
+
 public class IndexPair {
 	private int start;
 	private int end;
